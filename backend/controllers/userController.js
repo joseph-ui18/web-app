@@ -3,6 +3,7 @@ const jwt = require('jsonwebtoken');
 
 const JWT_SECRET = process.env.JWT_SECRET; // set this in your .env file
 const JWT_EXPIRES_IN = '7d';
+const STRONG_PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#^()_\-+=])[A-Za-z\d@$!%*?&#^()_\-+=]{8,}$/;
 
 /* ============================================================
    REGISTER (role always defaults to 'user')
@@ -13,6 +14,11 @@ exports.register = async (req, res) => {
 
         if (!name || !email || !password) {
             return res.status(400).json({ message: 'Name, email, and password are required' });
+        }
+        if (!STRONG_PASSWORD_REGEX.test(password)) {
+            return res.status(400).json({
+                message: 'Password must be at least 8 characters and contain an uppercase letter, a lowercase letter, a number, and a special character.'
+            });
         }
 
         const existing = await User.findOne({ where: { email } });
@@ -54,7 +60,8 @@ exports.register = async (req, res) => {
    ============================================================ */
 exports.login = async (req, res) => {
     try {
-        const { email, password } = req.body;
+        const { name, password } = req.body;
+        const email = req.body.email?.trim().toLowerCase();
 
         if (!email || !password) {
             return res.status(400).json({ message: 'Email and password are required' });

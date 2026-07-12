@@ -36,11 +36,13 @@
             <form id="login-form" class="space-y-5">
                 <div>
                     <label class="block text-xs font-semibold text-gray-700 mb-1.5">Email</label>
-                    <input type="text" id="email" class="w-full bg-gray-50 text-sm text-gray-800 px-4 py-3 rounded-lg border border-gray-200 focus:outline-none focus:border-[#2a52be] focus:bg-white transition" placeholder="you@example.com">
+                    <input type="text" id="email" name="email" class="w-full bg-gray-50 text-sm text-gray-800 px-4 py-3 rounded-lg border border-gray-200 focus:outline-none focus:border-[#2a52be] focus:bg-white transition" placeholder="you@example.com">
+                    <p id="email-error" class="hidden mt-1 text-xs text-red-600"></p>
                 </div>
                 <div>
                     <label class="block text-xs font-semibold text-gray-700 mb-1.5">Password</label>
-                    <input type="password" id="password" class="w-full bg-gray-50 text-sm text-gray-800 px-4 py-3 rounded-lg border border-gray-200 focus:outline-none focus:border-[#2a52be] focus:bg-white transition" placeholder="••••••••">
+                    <input type="password" id="password" name="password" class="w-full bg-gray-50 text-sm text-gray-800 px-4 py-3 rounded-lg border border-gray-200 focus:outline-none focus:border-[#2a52be] focus:bg-white transition" placeholder="••••••••">
+                    <p id="password-error" class="hidden mt-1 text-xs text-red-600"></p>    
                 </div>
 
                 <button type="submit" id="login-submit" class="w-full bg-[#2a52be] hover:bg-[#1f3d90] text-white font-medium text-sm py-3.5 rounded-lg shadow-md shadow-blue-600/20 transition-all transform active:scale-95">
@@ -56,11 +58,11 @@
     </main>
 
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-validate/1.19.5/jquery.validate.min.js"></script>
     <script src="js/config.js"></script>
     <script>
         $(document).ready(function () {
 
-            // if already logged in, skip this page
             if (localStorage.getItem('token')) {
                 window.location.href = 'home.html';
             }
@@ -75,9 +77,48 @@
                 $('#error-box').addClass('hidden').text('');
             }
 
+            // Initialize jQuery Validation
+            $('#login-form').validate({
+                rules: {
+                    email: { required: true, email: true },
+                    password: { required: true }
+                },
+                messages: {
+                    email: {
+                        required: 'Email is required',
+                        email: 'Enter a valid email address'
+                    },
+                    password: {
+                        required: 'Password is required',
+                        minlength: 'Password must be at least 6 characters'
+                    }
+                },
+                errorPlacement: function (error, element) {
+                    const fieldName = element.attr('name');
+                    const errorEl = $(`#${fieldName}-error`);
+                    if (errorEl.length) {
+                        errorEl.removeClass('hidden').text(error.text());
+                    } else {
+                        error.insertAfter(element);
+                    }
+                },
+                success: function (label, element) {
+                    const fieldName = $(element).attr('name');
+                    const errorEl = $(`#${fieldName}-error`);
+                    if (errorEl.length) {
+                        errorEl.addClass('hidden').text('');
+                    }
+                }
+            });
+
             $('#login-form').on('submit', function (e) {
                 e.preventDefault();
                 hideError();
+
+                // stop here if client-side validation fails
+                if (!$('#login-form').valid()) {
+                    return;
+                }
 
                 const email = $('#email').val().trim();
                 const password = $('#password').val();

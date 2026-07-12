@@ -187,7 +187,7 @@ exports.adminGetAllOrders = async (req, res) => {
 };
 
 /* ============================================================
-   ADMIN: UPDATE ORDER STATUS (pending -> shipped -> completed | cancelled)
+   ADMIN: UPDATE ORDER STATUS
    ============================================================ */
 exports.updateOrderStatus = async (req, res) => {
     const { id } = req.params;
