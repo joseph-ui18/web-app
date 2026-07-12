@@ -17,7 +17,7 @@ exports.getSalesSummary = async (req, res) => {
         if (to) dateFilter[Op.lte] = new Date(to);
 
         const whereClause = { status: 'completed' };
-        if (from || to) whereClause.created_at = dateFilter;
+        if (from || to) whereClause.createdAt = dateFilter;  // was created_at
 
         // total revenue = sum of quantity * price_at_purchase across completed orders
         const completedOrders = await Order.findAll({
@@ -64,21 +64,21 @@ exports.getRevenueOverTime = async (req, res) => {
         const { from, to } = req.query;
         const whereClause = { status: 'completed' };
         if (from || to) {
-            whereClause.created_at = {};
-            if (from) whereClause.created_at[Op.gte] = new Date(from);
-            if (to) whereClause.created_at[Op.lte] = new Date(to);
+            whereClause.createdAt = {};  // was created_at
+            if (from) whereClause.createdAt[Op.gte] = new Date(from);
+            if (to) whereClause.createdAt[Op.lte] = new Date(to);
         }
 
         const orders = await Order.findAll({
             where: whereClause,
             include: [{ model: OrderLine }],
-            order: [['created_at', 'ASC']]
+            order: [['createdAt', 'ASC']]  // was created_at
         });
 
         // group revenue by calendar day
         const revenueByDay = {};
         orders.forEach(order => {
-            const day = order.created_at.toISOString().split('T')[0];
+            const day = order.createdAt.toISOString().split('T')[0];  // was created_at — this is the line that was crashing
             const orderTotal = order.OrderLines.reduce(
                 (sum, line) => sum + parseFloat(line.price_at_purchase) * line.quantity,
                 0
@@ -150,19 +150,19 @@ exports.getOrderVolumeOverTime = async (req, res) => {
         const { from, to } = req.query;
         const whereClause = {};
         if (from || to) {
-            whereClause.created_at = {};
-            if (from) whereClause.created_at[Op.gte] = new Date(from);
-            if (to) whereClause.created_at[Op.lte] = new Date(to);
+            whereClause.createdAt = {};  // was created_at
+            if (from) whereClause.createdAt[Op.gte] = new Date(from);
+            if (to) whereClause.createdAt[Op.lte] = new Date(to);
         }
 
         const orders = await Order.findAll({
             where: whereClause,
-            attributes: ['id', 'created_at', 'status']
+            attributes: ['id', 'createdAt', 'status']  // was created_at
         });
 
         const countsByDay = {};
         orders.forEach(order => {
-            const day = order.created_at.toISOString().split('T')[0];
+            const day = order.createdAt.toISOString().split('T')[0];  // was created_at
             countsByDay[day] = (countsByDay[day] || 0) + 1;
         });
 

@@ -255,14 +255,14 @@ async function seedDatabase() {
         await ensureDefaultAccount({
             name: 'System Admin',
             email: 'admin@macsphere.com',
-            password: 'admin123',
+            password: 'Admin123!',
             role: 'admin'
         });
 
         const user = await ensureDefaultAccount({
             name: 'Default User',
             email: 'user@macsphere.com',
-            password: 'user123',
+            password: 'User123!',
             role: 'user'
         });
 
@@ -283,6 +283,105 @@ async function seedDatabase() {
                 city: 'Taguig City',
                 is_default: true
             });
+        }
+
+        const orderCount = await db.Order.count();
+
+        if (orderCount === 0) {
+            console.log('Seeding demo buyers...');
+
+            const demoBuyersData = [
+                { name: 'Maria Santos', email: 'maria.santos@example.com', city: 'Quezon City', zip: '1100', line: '45 Kalayaan Ave' },
+                { name: 'Juan Dela Cruz', email: 'juan.delacruz@example.com', city: 'Makati City', zip: '1200', line: '12 Ayala Ext' },
+                { name: 'Andrea Reyes', email: 'andrea.reyes@example.com', city: 'Pasig City', zip: '1600', line: '78 Ortigas St' },
+                { name: 'Carlo Villanueva', email: 'carlo.villanueva@example.com', city: 'Paranaque City', zip: '1700', line: '9 Sucat Rd' },
+                { name: 'Bea Fernandez', email: 'bea.fernandez@example.com', city: 'Taguig City', zip: '1630', line: '33 Bonifacio High St' }
+            ];
+
+            const demoBuyers = [];
+            for (const b of demoBuyersData) {
+                const [buyer] = await db.User.findOrCreate({
+                    where: { email: b.email },
+                    defaults: { name: b.name, email: b.email, password: 'Password123!', role: 'user' }
+                });
+
+                const [address] = await db.Address.findOrCreate({
+                    where: { user_id: buyer.id, is_default: true },
+                    defaults: {
+                        user_id: buyer.id,
+                        address_line: b.line,
+                        zipcode: b.zip,
+                        city: b.city,
+                        is_default: true
+                    }
+                });
+
+                demoBuyers.push({ buyer, address });
+            }
+
+            // Include the Default User too, so charts aren't only demo accounts
+            const defaultUserAddress = await db.Address.findOne({ where: { user_id: user.id, is_default: true } });
+            demoBuyers.push({ buyer: user, address: defaultUserAddress });
+
+            console.log('Seeding demo orders...');
+
+            const allProducts = await db.Product.findAll();
+            const statuses = ['pending', 'shipped', 'completed', 'cancelled'];
+            const statusWeights = [0.15, 0.15, 0.6, 0.1]; // mostly completed, some in-flight, a few cancelled
+            const paymentMethods = ['Cash on Delivery', 'Credit Card', 'Debit Card', 'GCash'];
+
+            function pickWeighted(items, weights) {
+                const r = Math.random();
+                let sum = 0;
+                for (let i = 0; i < items.length; i++) {
+                    sum += weights[i];
+                    if (r <= sum) return items[i];
+                }
+                return items[items.length - 1];
+            }
+
+            function randomDateWithinLastMonths(months) {
+                const now = new Date();
+                const past = new Date();
+                past.setMonth(past.getMonth() - months);
+                return new Date(past.getTime() + Math.random() * (now.getTime() - past.getTime()));
+            }
+
+            const ORDERS_TO_CREATE = 40;
+
+            for (let i = 0; i < ORDERS_TO_CREATE; i++) {
+                const { buyer, address } = demoBuyers[Math.floor(Math.random() * demoBuyers.length)];
+                const status = pickWeighted(statuses, statusWeights);
+                const paymentMethod = paymentMethods[Math.floor(Math.random() * paymentMethods.length)];
+                const placedAt = randomDateWithinLastMonths(6);
+
+                const order = await db.Order.create({
+                    buyer_id: buyer.id,
+                    address_id: address.id,
+                    payment_method: paymentMethod,
+                    status,
+                    date_placed: placedAt,
+                    createdAt: placedAt,
+                    updatedAt: placedAt
+                });
+
+                // 1–4 line items per order, no duplicate products within an order
+                const lineCount = 1 + Math.floor(Math.random() * 4);
+                const shuffled = [...allProducts].sort(() => 0.5 - Math.random());
+                const chosenProducts = shuffled.slice(0, lineCount);
+
+                for (const product of chosenProducts) {
+                    const quantity = 1 + Math.floor(Math.random() * 3);
+                    await db.OrderLine.create({
+                        order_id: order.id,
+                        product_id: product.id,
+                        quantity,
+                        price_at_purchase: product.sell_price
+                    });
+                }
+            }
+
+            console.log(`Seeding completed. ${ORDERS_TO_CREATE} orders created.`);
         }
     } catch (e) {
         console.error('Database Sync/Seed Error:', e);
